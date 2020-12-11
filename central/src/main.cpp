@@ -36,10 +36,10 @@ int main() {
     iniciar_menu(solicitacoes, "SOLICITACOES");
     iniciar_menu(escolhas, "ESCOLHAS");
 
-    atualizar_menu_opcoes(opcoes);
-    atualizar_menu_dispositivos(dispositivos);
-    atualizar_menu_solicitacoes(solicitacoes);
-    atualizar_menu_escolhas(escolhas);
+    thread thread_menus(thread_atualizar_menus, opcoes, dispositivos, solicitacoes);
+    pegar_escolhas(escolhas);
+
+    thread_menus.join();
 
     delwin(opcoes);
     delwin(dispositivos);

@@ -2,6 +2,31 @@
 
 mutex mtx_interface;
 bool programa_pode_continuar = true;
+int quantidade_dispositivos_padrao = 9;
+
+char dispositivos_cadastrados[5][18] = {0};
+int quantidade_dispositivos_cadastrados = 0;
+
+// char dispositivos_esperando[5][18] = {0};
+// int quantidade_dispositivos_esperando = 0;
+char dispositivos_esperando[5][18] = {
+    "24:62:ab:e0:bc:14",
+    "12:34:56:78:90:ab"
+};
+int quantidade_dispositivos_esperando = 2;
+
+char dispositivos_cadastrados_nome[5][MAX_CARACTERES_NOME] = {0};
+
+void limpar_menu(WINDOW *menu, const int num_lines) {
+    mtx_interface.lock();
+
+    for(int i = 3; i < num_lines-1; ++i) {
+        wmove(menu, i, 1);
+        wclrtoeol(menu);
+    }
+
+    mtx_interface.unlock();
+}
 
 void iniciar_menu(WINDOW *menu, string titulo) {
     mtx_interface.lock();
@@ -19,15 +44,21 @@ void iniciar_menu(WINDOW *menu, string titulo) {
 
 void atualizar_menu_opcoes(WINDOW *menu) {
     mtx_interface.lock();
-
     const int line_size = getmaxx(menu);
-    int index = 1;
+    const int num_lines = getmaxy(menu);
+    mtx_interface.unlock();
 
-    for(int i = 3; i <= 29; i += 2, index++) {
-        wmove(menu, i, 1);
+    limpar_menu(menu, num_lines);
+
+    mtx_interface.lock();
+
+    int linha_atual = 3;
+
+    for(int index = 1; index <= 9; ++index, linha_atual += 2) {
+        wmove(menu, linha_atual, 1);
         wclrtoeol(menu);
 
-        mvwprintw(menu, i, 2, "%02d   Ligar", index);
+        mvwprintw(menu, linha_atual, 2, "%02d   Ligar", index);
     }
 
     mvwvline(menu, 3, 5, 0, 35);
@@ -44,16 +75,24 @@ void atualizar_menu_opcoes(WINDOW *menu) {
 void atualizar_menu_dispositivos(WINDOW *menu) {
     mtx_interface.lock();
     const int line_size = getmaxx(menu);
-    const int quantidade_dispositivos = 9;
+    const int num_lines = getmaxy(menu);
+    mtx_interface.unlock();
+
+    limpar_menu(menu, num_lines);
+
+    mtx_interface.lock();
 
     int linha_atual = 3, index = 1;
 
-    while(index <= quantidade_dispositivos) {
+    while(index <= quantidade_dispositivos_padrao) {
         int start = 1;
         if(!(index&1))
             start += (line_size/2);
 
-        mvwprintw(menu, linha_atual, start+1, "%02d Nome do Dispositivo", index);
+        int name_size = strlen(dispositivos_padrao[index-1]);
+        const string spaces(((line_size/2)-name_size)/2 - 3, ' ');
+
+        mvwprintw(menu, linha_atual, start+1, "%02d%s%s%s", index, spaces.c_str(), dispositivos_padrao[index-1], spaces.c_str());
         mvwhline(menu, linha_atual+1, start, 0, line_size/2);
 
         mvwvline(menu, linha_atual+2, start+(line_size/2)/3, 0, 1);
@@ -67,9 +106,9 @@ void atualizar_menu_dispositivos(WINDOW *menu) {
         index++;
     }
 
-    int barra_vertical = 4*(quantidade_dispositivos/2);
+    int barra_vertical = 4*(quantidade_dispositivos_padrao/2);
 
-    if(quantidade_dispositivos&1) barra_vertical += 4;
+    if(quantidade_dispositivos_padrao&1) barra_vertical += 4;
 
     mvwvline(menu, 3, line_size/2, 0, barra_vertical);
 
@@ -81,25 +120,39 @@ void atualizar_menu_dispositivos(WINDOW *menu) {
 
 void atualizar_menu_solicitacoes(WINDOW *menu) {
     mtx_interface.lock();
+    const int line_size = getmaxx(menu);
+    const int num_lines = getmaxy(menu);
+    mtx_interface.unlock();
 
+    limpar_menu(menu, num_lines);
 
+    mtx_interface.lock();
+
+    // MAC ADRESS
+    const string spaces((line_size-8-10)/2, ' ');
+    const string spaces2((line_size-26)/2, ' ');
+
+    mvwprintw(menu, 3, 1, " ID |%sMAC ADRESS%s", spaces.c_str(), spaces.c_str());
+    mvwhline(menu, 4, 1, 0, line_size);
+
+    int linha_atual = 5;
+
+    for(int i = 0; i < quantidade_dispositivos_esperando; ++i, linha_atual += 2) {
+        wmove(menu, linha_atual, 1);
+        wclrtoeol(menu);
+
+        mvwprintw(menu, linha_atual, 2, "%02d |%s%s%s", i+1, spaces2.c_str(), dispositivos_esperando[i], spaces2.c_str());
+        mvwhline(menu, linha_atual+1, 0, 0, line_size);
+    }
+
+    box(menu, 0, 0);
+    wrefresh(menu);
     
     mtx_interface.unlock();
 }
 
-void limpar_menu_escolhas(WINDOW *menu, const int num_lines) {
-    mtx_interface.lock();
-
-    for(int i = 3; i < num_lines-1; ++i) {
-        wmove(menu, i, 1);
-        wclrtoeol(menu);
-    }
-
-    mtx_interface.unlock();
-}
-
 void reiniciar_menu_ecolhas(WINDOW *menu, const int num_lines) {
-    limpar_menu_escolhas(menu, num_lines);
+    limpar_menu(menu, num_lines);
 
     mtx_interface.lock();
 
@@ -111,7 +164,7 @@ void reiniciar_menu_ecolhas(WINDOW *menu, const int num_lines) {
 }
 
 void mudar_estado_dispositivo(WINDOW *menu, const int num_lines) {
-    limpar_menu_escolhas(menu, num_lines);
+    limpar_menu(menu, num_lines);
 
     int opcao;
     bool invalid = false;
@@ -119,22 +172,68 @@ void mudar_estado_dispositivo(WINDOW *menu, const int num_lines) {
     do {
         mtx_interface.lock();
 
+        const int total_dispositivos = quantidade_dispositivos_padrao + quantidade_dispositivos_cadastrados;
+
         if(invalid) {
             wmove(menu, 3, 1);
             wclrtoeol(menu);
-            mvwprintw(menu, 4, 2, "Escolha deve estar entre 1 e 14");
+            mvwprintw(menu, 4, 2, "Escolha deve estar entre 1 e %d", total_dispositivos);
         }
 
         mvwprintw(menu, 3, 2, "Digite o numero do dispositivo que deseja mudar: ");
         mtx_interface.unlock();
         mvwscanw(menu, 3, 51, "%d", &opcao);
-        invalid = opcao < 1 || opcao > 14;
+        invalid = opcao < 1 || opcao > total_dispositivos;
     } while(invalid);
 
     // mudar estado
 }
 
-void atualizar_menu_escolhas(WINDOW *menu) {
+void adicionar_novo_dispositivo(int index) {
+    strcpy(dispositivos_cadastrados[quantidade_dispositivos_cadastrados], dispositivos_esperando[index-1]);
+    quantidade_dispositivos_cadastrados++;
+
+    for(int i = index-1; i < quantidade_dispositivos_esperando-1; ++i) {
+        strcpy(dispositivos_esperando[i], dispositivos_esperando[i+1]);
+    }
+    quantidade_dispositivos_esperando--;
+}
+
+void escolher_dispositivo(WINDOW *menu, const int num_lines) {
+    limpar_menu(menu, num_lines);
+
+    if(quantidade_dispositivos_esperando == 0) {
+        mtx_interface.lock();
+        mvwprintw(menu, 3, 2, "Nao ha dispositivo esperando solicitacao.");
+        mvwprintw(menu, 4, 2, "Pressione qualquer tecla para continuar.");
+        wrefresh(menu);
+        mtx_interface.unlock();
+        getchar();
+    }
+    else {
+        int opcao;
+        bool invalid = false;
+
+        do {
+            mtx_interface.lock();
+
+            if(invalid) {
+                wmove(menu, 3, 1);
+                wclrtoeol(menu);
+                mvwprintw(menu, 4, 2, "Escolha deve estar entre 1 e %d", quantidade_dispositivos_esperando);
+            }
+
+            mvwprintw(menu, 3, 2, "Digite o identificador do dispositivo que deseja adicionar (1 a %d): ", quantidade_dispositivos_esperando);
+            mtx_interface.unlock();
+            mvwscanw(menu, 3, 70, "%d", &opcao);
+            invalid = opcao < 1 || opcao > quantidade_dispositivos_esperando;
+        } while (invalid);
+        
+        adicionar_novo_dispositivo(opcao);
+    }
+}
+
+void pegar_escolhas(WINDOW *menu) {
     mtx_interface.lock();
     const int num_lines = getmaxy(menu);
     mtx_interface.unlock();
@@ -167,7 +266,7 @@ void atualizar_menu_escolhas(WINDOW *menu) {
             mudar_estado_dispositivo(menu, num_lines);
             break;
         case 2:
-            /* code */
+            escolher_dispositivo(menu, num_lines);
             break;
         default:
             programa_pode_continuar = false;
@@ -175,4 +274,13 @@ void atualizar_menu_escolhas(WINDOW *menu) {
         }
 
     } while(programa_pode_continuar);
+}
+
+void thread_atualizar_menus(WINDOW *opcoes, WINDOW *dispositivos, WINDOW *solicitacoes) {
+    while(programa_pode_continuar) {
+        atualizar_menu_opcoes(opcoes);
+        atualizar_menu_dispositivos(dispositivos);
+        atualizar_menu_solicitacoes(solicitacoes);
+        sleep(1);
+    }
 }
