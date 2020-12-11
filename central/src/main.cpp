@@ -6,7 +6,7 @@ int main() {
     initscr();
 
     getmaxyx(stdscr, size_y, size_x);
-    const int min_colunas = 140, min_linhas = 39;
+    const int min_colunas = 160, min_linhas = 41;
 
     if(size_y < min_linhas or size_x < min_colunas) {
         endwin();
@@ -16,10 +16,10 @@ int main() {
         return 0;
     }
 
-    WINDOW *opcoes = newwin(30, size_x/4, 0, 0),
-           *dispositivos = newwin(30, size_x/2, 0, size_x/4),
-           *solicitacoes = newwin(30, size_x/4, 0, 3*size_x/4),
-           *escolhas = newwin(size_y-30, size_x, 30, 0);
+    WINDOW *opcoes = newwin(31, size_x/4, 0, 0),
+           *dispositivos = newwin(31, size_x/2, 0, size_x/4),
+           *solicitacoes = newwin(31, size_x/4, 0, 3*size_x/4),
+           *escolhas = newwin(size_y-31, size_x, 31, 0);
     
     box(opcoes, 0, 0);
     box(dispositivos, 0, 0);
@@ -40,8 +40,6 @@ int main() {
     atualizar_menu_dispositivos(dispositivos);
     atualizar_menu_solicitacoes(solicitacoes);
     atualizar_menu_escolhas(escolhas);
-    
-    getchar();
 
     delwin(opcoes);
     delwin(dispositivos);
