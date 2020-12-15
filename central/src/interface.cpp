@@ -1,6 +1,9 @@
 #include "interface.hpp"
 
+FILE *file;
+
 mutex mtx_interface;
+mutex mtx_csv;
 bool programa_pode_continuar = true;
 const int quantidade_dispositivos_padrao = 9;
 
@@ -14,6 +17,26 @@ char dispositivos_esperando[5][18] = {
     "12:34:56:78:90:ab"
 };
 int quantidade_dispositivos_esperando = 2;
+
+void signal_handler(int signum) {
+    programa_pode_continuar = false;
+}
+
+int abrir_csv() {
+    file = fopen("arquivo.csv", "w+");
+    if(file == NULL) {
+        return 1;
+    }
+
+    if(fprintf(file, "Data/Hora, Fonte, Ocorrido\n") <= 0)
+        return 2;
+
+    return 0;
+}
+
+void fechar_csv() {
+    fclose(file);
+}
 
 void limpar_menu(WINDOW *menu, const int num_lines) {
     mtx_interface.lock();
@@ -224,6 +247,23 @@ void mudar_estado_dispositivo(WINDOW *menu, const int num_lines) {
     // mudar estado
 }
 
+void salvar_dispositivos_cadastrados() {
+    FILE *lista_esps;
+    lista_esps = fopen("esps.txt", "w+");
+
+    fprintf(lista_esps, "%d\n", quantidade_dispositivos_cadastrados);
+
+    for(int i = 0; i < quantidade_dispositivos_cadastrados; ++i) {
+        ESP32 esp = dispositivos_cadastrados[i];
+
+        fprintf(lista_esps, "%s\n", esp.getMacAdress().c_str());
+        fprintf(lista_esps, "%s\n", esp.getComodo().c_str());
+        fprintf(lista_esps, "%s\n", esp.getNome().c_str());
+    }
+
+    fclose(lista_esps);
+}
+
 void adicionar_novo_dispositivo(const int index, const string comodo, const string nome, const string mac_adress) {
     dispositivos_cadastrados[quantidade_dispositivos_cadastrados] = ESP32(comodo, nome, mac_adress);
     quantidade_dispositivos_cadastrados++;
@@ -232,6 +272,8 @@ void adicionar_novo_dispositivo(const int index, const string comodo, const stri
         strcpy(dispositivos_esperando[i], dispositivos_esperando[i+1]);
     }
     quantidade_dispositivos_esperando--;
+
+    salvar_dispositivos_cadastrados();
 }
 
 string pegar_comodo_dispositivo(WINDOW *menu, const int num_lines) {
@@ -304,7 +346,7 @@ void escolher_dispositivo(WINDOW *menu, const int num_lines) {
         
         string comodo = pegar_comodo_dispositivo(menu, num_lines);
         string nome = pegar_nome_dispositivo(menu, num_lines);
-        string mac_adress(dispositivos_esperando[opcao]);
+        string mac_adress(dispositivos_esperando[opcao-1]);
         
         adicionar_novo_dispositivo(opcao, comodo, nome, mac_adress);
     }
@@ -359,5 +401,32 @@ void thread_atualizar_menus(WINDOW *opcoes, WINDOW *dispositivos, WINDOW *solici
         atualizar_menu_dispositivos(dispositivos);
         atualizar_menu_solicitacoes(solicitacoes);
         sleep(1);
+    }
+}
+
+void atualizar_csv(const int opcao, const int index, const int ligou) {
+    time_t now = time(0);
+    tm *ltm = localtime(&now);
+
+    if(opcao == 1) {
+        mtx_csv.lock();
+        fprintf(file, "%02d/%02d/%d %02d:%02d:%02d, Usuário, %s%s\n",
+            ltm->tm_mday,
+            ltm->tm_mon+1,
+            ltm->tm_year+1900,
+            ltm->tm_hour,
+            ltm->tm_min,
+            ltm->tm_sec,
+            ligou == 1 ? "Ligar " : "Desligar ",
+            index <= quantidade_dispositivos_padrao ?
+            dispositivos_padrao[index-1] :
+            dispositivos_cadastrados[index-1-quantidade_dispositivos_padrao].getNome().c_str()
+        );
+        mtx_csv.unlock();
+    }
+    else if(opcao == 2) {
+        mtx_csv.lock();
+        // salvar
+        mtx_csv.unlock();
     }
 }

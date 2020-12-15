@@ -6,13 +6,14 @@
 #include <string.h>
 #include <unistd.h>
 #include <thread>
+#include <signal.h>
 #include "constantes.hpp"
 #include "ESP32.hpp"
 
 using namespace std;
 
+void signal_handler(int signum);
 void iniciar_menu(WINDOW *menu, string titulo);
-
 void atualizar_menu_opcoes(WINDOW *menu);
 void atualizar_menu_dispositivos(WINDOW *menu);
 void atualizar_menu_solicitacoes(WINDOW *menu);

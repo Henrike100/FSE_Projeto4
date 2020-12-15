@@ -2,6 +2,10 @@
 #include "interface.hpp"
 
 int main() {
+    signal(SIGHUP, signal_handler);
+    signal(SIGINT, signal_handler);
+    signal(SIGTERM, signal_handler);
+    
     int size_x, size_y;
     initscr();
 

@@ -1,3 +1,4 @@
 bin/bin
 obj/*.o
 *.csv
+esps.txt
