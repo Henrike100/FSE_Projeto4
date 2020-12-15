@@ -2,9 +2,9 @@
 
 mutex mtx_interface;
 bool programa_pode_continuar = true;
-int quantidade_dispositivos_padrao = 9;
+const int quantidade_dispositivos_padrao = 9;
 
-char dispositivos_cadastrados[5][18] = {0};
+ESP32 dispositivos_cadastrados[5];
 int quantidade_dispositivos_cadastrados = 0;
 
 // char dispositivos_esperando[5][18] = {0};
@@ -14,8 +14,6 @@ char dispositivos_esperando[5][18] = {
     "12:34:56:78:90:ab"
 };
 int quantidade_dispositivos_esperando = 2;
-
-char dispositivos_cadastrados_nome[5][MAX_CARACTERES_NOME] = {0};
 
 void limpar_menu(WINDOW *menu, const int num_lines) {
     mtx_interface.lock();
@@ -54,11 +52,18 @@ void atualizar_menu_opcoes(WINDOW *menu) {
 
     int linha_atual = 3;
 
-    for(int index = 1; index <= 9; ++index, linha_atual += 2) {
+    for(int index = 1; index <= quantidade_dispositivos_padrao; ++index, linha_atual += 2) {
         wmove(menu, linha_atual, 1);
         wclrtoeol(menu);
 
         mvwprintw(menu, linha_atual, 2, "%02d   Ligar", index);
+    }
+
+    for(int i = 0; i < quantidade_dispositivos_cadastrados; ++i, linha_atual += 2) {
+        wmove(menu, linha_atual, 1);
+        wclrtoeol(menu);
+
+        mvwprintw(menu, linha_atual, 2, "%02d   Ligar", i+1+quantidade_dispositivos_padrao);
     }
 
     mvwvline(menu, 3, 5, 0, 35);
@@ -95,8 +100,9 @@ void atualizar_menu_dispositivos(WINDOW *menu) {
         mvwprintw(menu, linha_atual, start+1, "%02d%s%s%s", index, spaces.c_str(), dispositivos_padrao[index-1], spaces.c_str());
         mvwhline(menu, linha_atual+1, start, 0, line_size/2);
 
-        mvwvline(menu, linha_atual+2, start+(line_size/2)/3, 0, 1);
-        mvwvline(menu, linha_atual+2, start+(line_size)/3, 0, 1);
+        mvwvline(menu, linha_atual+2, start-1+(line_size)/8, 0, 1);
+        mvwvline(menu, linha_atual+2, start-1+(line_size)/4, 0, 1);
+        mvwvline(menu, linha_atual+2, start-2+(3*line_size)/8, 0, 1);
 
         mvwhline(menu, linha_atual+3, start, 0, line_size/2);
 
@@ -106,9 +112,38 @@ void atualizar_menu_dispositivos(WINDOW *menu) {
         index++;
     }
 
-    int barra_vertical = 4*(quantidade_dispositivos_padrao/2);
+    int i = 1;
 
-    if(quantidade_dispositivos_padrao&1) barra_vertical += 4;
+    while(i <= quantidade_dispositivos_cadastrados) {
+        index = i+quantidade_dispositivos_padrao;
+        int start = 1;
+        if(!(index&1))
+            start += (line_size/2);
+
+        string name = dispositivos_cadastrados[i-1].getNome();
+
+        const string spaces(((line_size/2)-name.size())/2 - 3, ' ');
+
+        mvwprintw(menu, linha_atual, start+1, "%02d%s%s%s", index, spaces.c_str(), name.c_str(), spaces.c_str());
+        mvwhline(menu, linha_atual+1, start, 0, line_size/2);
+
+        mvwvline(menu, linha_atual+2, start-1+(line_size)/8, 0, 1);
+        mvwvline(menu, linha_atual+2, start-1+(line_size)/4, 0, 1);
+        mvwvline(menu, linha_atual+2, start-2+(3*line_size)/8, 0, 1);
+
+        mvwhline(menu, linha_atual+3, start, 0, line_size/2);
+
+        if(!(index&1))
+            linha_atual += 4;
+
+        i++;
+    }
+
+    int total_dispositivos = quantidade_dispositivos_padrao + quantidade_dispositivos_cadastrados;
+
+    int barra_vertical = 4*(total_dispositivos/2);
+
+    if(total_dispositivos&1) barra_vertical += 4;
 
     mvwvline(menu, 3, line_size/2, 0, barra_vertical);
 
@@ -189,8 +224,8 @@ void mudar_estado_dispositivo(WINDOW *menu, const int num_lines) {
     // mudar estado
 }
 
-void adicionar_novo_dispositivo(int index) {
-    strcpy(dispositivos_cadastrados[quantidade_dispositivos_cadastrados], dispositivos_esperando[index-1]);
+void adicionar_novo_dispositivo(const int index, const string comodo, const string nome, const string mac_adress) {
+    dispositivos_cadastrados[quantidade_dispositivos_cadastrados] = ESP32(comodo, nome, mac_adress);
     quantidade_dispositivos_cadastrados++;
 
     for(int i = index-1; i < quantidade_dispositivos_esperando-1; ++i) {
@@ -199,12 +234,50 @@ void adicionar_novo_dispositivo(int index) {
     quantidade_dispositivos_esperando--;
 }
 
+string pegar_comodo_dispositivo(WINDOW *menu, const int num_lines) {
+    limpar_menu(menu, num_lines);
+
+    char comodo[MAX_CARACTERES_COMODO+1];
+
+    mtx_interface.lock();
+    mvwprintw(menu, 3, 2, "Digite o nome do comodo (max %d caracteres): ", MAX_CARACTERES_COMODO);
+    mtx_interface.unlock();
+    
+    mvwscanw(menu, 3, 47, " %[^\n]", &comodo);
+
+    string c(comodo);
+    return c;
+}
+
+string pegar_nome_dispositivo(WINDOW *menu, const int num_lines) {
+    limpar_menu(menu, num_lines);
+
+    char nome[MAX_CARACTERES_COMODO+1];
+
+    mtx_interface.lock();
+    mvwprintw(menu, 3, 2, "Digite o nome do dispositivo (max %d caracteres): ", MAX_CARACTERES_NOME);
+    mtx_interface.unlock();
+    
+    mvwscanw(menu, 3, 53, " %[^\n]", &nome);
+
+    string n(nome);
+    return n;
+}
+
 void escolher_dispositivo(WINDOW *menu, const int num_lines) {
     limpar_menu(menu, num_lines);
 
     if(quantidade_dispositivos_esperando == 0) {
         mtx_interface.lock();
         mvwprintw(menu, 3, 2, "Nao ha dispositivo esperando solicitacao.");
+        mvwprintw(menu, 4, 2, "Pressione qualquer tecla para continuar.");
+        wrefresh(menu);
+        mtx_interface.unlock();
+        getchar();
+    }
+    else if(quantidade_dispositivos_cadastrados == 5) {
+        mtx_interface.lock();
+        mvwprintw(menu, 3, 2, "Nao ha espaco disponivel para um novo dispositivo.");
         mvwprintw(menu, 4, 2, "Pressione qualquer tecla para continuar.");
         wrefresh(menu);
         mtx_interface.unlock();
@@ -229,7 +302,11 @@ void escolher_dispositivo(WINDOW *menu, const int num_lines) {
             invalid = opcao < 1 || opcao > quantidade_dispositivos_esperando;
         } while (invalid);
         
-        adicionar_novo_dispositivo(opcao);
+        string comodo = pegar_comodo_dispositivo(menu, num_lines);
+        string nome = pegar_nome_dispositivo(menu, num_lines);
+        string mac_adress(dispositivos_esperando[opcao]);
+        
+        adicionar_novo_dispositivo(opcao, comodo, nome, mac_adress);
     }
 }
 
