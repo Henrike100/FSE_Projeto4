@@ -6,6 +6,8 @@
 #include "cJSON.h"
 #include "constantes.h"
 
+char* mensagem_inicializacao(const uint8_t mac_address);
+char* pegar_comodo(const char * const monitor);
 char* transformar_mensagem_para_JSON(const int identificador, uint8_t mac_address, const char* comodo, const int dado);
 
 #endif

@@ -18,6 +18,7 @@
 #include "esp_log.h"
 #include "mqtt_client.h"
 #include "constantes.h"
+#include "utilidades.h"
 
 #include "mqtt.h"
 
@@ -25,6 +26,8 @@
 
 extern xSemaphoreHandle conexaoMQTTSemaphore;
 extern uint8_t mac_address;
+extern char comodo[20];
+
 esp_mqtt_client_handle_t client;
 
 static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event) {
@@ -32,13 +35,13 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event) {
     int msg_id;
 
     char topico_inicializacao[50];
-    
+    sprintf(topico_inicializacao, "fse2020/%s/dispositivos/%d", MATRICULA, mac_address);
+
     switch (event->event_id) {
         case MQTT_EVENT_CONNECTED:
             //ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
             xSemaphoreGive(conexaoMQTTSemaphore);
-            sprintf(topico_inicializacao, "fse2020/%s/dispositivos/%d", MATRICULA, mac_address);
-            msg_id = esp_mqtt_client_publish(client, topico_inicializacao, ".", 0, 1, 0);
+            msg_id = esp_mqtt_client_publish(client, topico_inicializacao, mensagem_inicializacao(mac_address), 0, 1, 0);
             msg_id = esp_mqtt_client_subscribe(client, topico_inicializacao, 0);
             break;
         case MQTT_EVENT_DISCONNECTED:
@@ -57,6 +60,19 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event) {
             //ESP_LOGI(TAG, "MQTT_EVENT_DATA");
             printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
             printf("DATA=%.*s\r\n", event->data_len, event->data);
+
+            // Se o servidor central mandou o comodo do dispositivo
+            if(strcmp(event->topic, topico_inicializacao) == 0) {
+                strcpy(comodo, pegar_comodo(event->data));
+
+                // Agora o dispositivo pode publicar
+                xSemaphoreGive(conexaoMQTTSemaphore);
+            }
+            // Caso contrário, o servidor central pediu para ligar ou desligar o LED
+            else {
+                // pegar comando de ligar/desligar
+                
+            }
             break;
         case MQTT_EVENT_ERROR:
             //ESP_LOGI(TAG, "MQTT_EVENT_ERROR");

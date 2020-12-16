@@ -14,4 +14,6 @@
 #define IDENTIFICADOR_ESTADO_ENTRADA    2
 #define IDENTIFICADOR_ESTADO_SAIDA      3
 
+#define TEMPO_ENVIO_MQTT    3 // segundos
+
 #endif

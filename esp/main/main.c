@@ -15,8 +15,9 @@
 xSemaphoreHandle conexaoWifiSemaphore;
 xSemaphoreHandle conexaoMQTTSemaphore;
 uint8_t mac_address;
+char comodo[20];
 
-char topico[50];
+char topicoTemperatura[50], topicoUmidade[50];
 
 void conectadoWifi(void * params) {
     while(true) {
@@ -29,22 +30,28 @@ void conectadoWifi(void * params) {
 
 void trataComunicacaoComServidor(void * params) {
     if(xSemaphoreTake(conexaoMQTTSemaphore, portMAX_DELAY)) {
+        sprintf(topicoTemperatura, "fse2020/%s/%s/temperatura", MATRICULA, comodo);
+        sprintf(topicoUmidade, "fse2020/%s/%s/umidade", MATRICULA, comodo);
+
+        printf("Tópico Temperatura: %s\n", topicoTemperatura);
+        printf("Tópico Umidade: %s\n", topicoUmidade);
+        
         while(true) {
             struct dht11_reading dado = DHT11_read();
 
             // Envia temperatura
             mqtt_envia_mensagem(
-                topico,
-                transformar_mensagem_para_JSON(IDENTIFICADOR_TEMPERATURA, mac_address, "sala", dado.temperature)
+                topicoTemperatura,
+                transformar_mensagem_para_JSON(IDENTIFICADOR_TEMPERATURA, mac_address, comodo, dado.temperature)
             );
 
             // Envia Umidade
             mqtt_envia_mensagem(
                 topico,
-                transformar_mensagem_para_JSON(IDENTIFICADOR_UMIDADE, mac_address, "sala", dado.humidity)
+                transformar_mensagem_para_JSON(IDENTIFICADOR_UMIDADE, mac_address, comodo, dado.humidity)
             );
 
-            vTaskDelay(3000 / portTICK_PERIOD_MS);
+            vTaskDelay(TEMPO_ENVIO_MQTT * 1000 / portTICK_PERIOD_MS);
         }
     }
 }
@@ -64,8 +71,6 @@ void app_main(void) {
     // Pega MAC_ADDRESS
     ret = esp_efuse_mac_get_default(&mac_address);
 
-    sprintf(topico, "fse2020/%s/dispositivos/%d", MATRICULA, mac_address);
-    
     conexaoWifiSemaphore = xSemaphoreCreateBinary();
     conexaoMQTTSemaphore = xSemaphoreCreateBinary();
     wifi_start();
