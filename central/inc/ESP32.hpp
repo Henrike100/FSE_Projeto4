@@ -11,7 +11,7 @@ class ESP32 {
 private:
     string comodo;
     string nome;
-    int mac_adress;
+    string mac_adress;
     int temperatura = VALOR_INICIAL;
     int umidade = VALOR_INICIAL;
     int entrada = 0;
@@ -19,11 +19,11 @@ private:
 
 public:
     ESP32();
-    ESP32(const string& c, const string& n, const int m);
+    ESP32(const string& c, const string& n, const string& m);
 
     string getComodo() const;
     string getNome() const;
-    int getMacAdress() const;
+    string getMacAdress() const;
     string getTemperatura() const;
     string getUmidade() const;
     int getEntrada() const;

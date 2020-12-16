@@ -20,6 +20,8 @@ using namespace std;
 void signal_handler(int signum);
 int iniciar_MQTT();
 void desativar_MQTT();
+void pegar_comodos_ja_cadastrados();
+void adicionar_novo_dispositivo(const int index, const string comodo, const string nome, const string mac_adress);
 void iniciar_menu(WINDOW *menu, string titulo);
 void atualizar_menu_opcoes(WINDOW *menu);
 void atualizar_menu_dispositivos(WINDOW *menu);

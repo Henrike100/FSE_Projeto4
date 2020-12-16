@@ -48,6 +48,8 @@ int main() {
     iniciar_menu(solicitacoes, "SOLICITACOES");
     iniciar_menu(escolhas, "ESCOLHAS");
 
+    pegar_comodos_ja_cadastrados();
+
     thread thread_menus(thread_atualizar_menus, opcoes, dispositivos, solicitacoes);
     pegar_escolhas(escolhas);
 

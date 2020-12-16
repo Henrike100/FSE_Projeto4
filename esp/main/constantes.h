@@ -3,8 +3,8 @@
 
 #include "driver/gpio.h"
 
-#define BOTAO           GPIO_NUM_0
-#define LED             GPIO_NUM_2
+#define BOTAO                    0
+#define LED                      2
 #define SENSOR_DHT11    GPIO_NUM_4
 
 #define MATRICULA       "170050394"

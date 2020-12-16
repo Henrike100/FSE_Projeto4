@@ -1,21 +1,23 @@
 #include "utilidades.hpp"
 
-int pegar_mac_address(const char * const monitor) {
+void pegar_mac_address(const char * const monitor, char *mac) {
     cJSON *monitor_json = cJSON_Parse(monitor);
     if(monitor_json == NULL) {
-        return -2;
+        return;
     }
 
     const cJSON *id = NULL;
     id = cJSON_GetObjectItemCaseSensitive(monitor_json, "ID");
 
-    if(!cJSON_IsNumber(id)) {
+    if (!cJSON_IsString(id) or (id->valuestring == NULL)) {
         cJSON_Delete(monitor_json);
-        return -3;
+        return;
     }
 
+    strcpy(mac, id->valuestring);
+
     cJSON_Delete(monitor_json);
-    return id->valueint;
+    return;
 }
 
 char* transformar_comodo_para_JSON(string comodo) {
@@ -33,7 +35,7 @@ char* transformar_comodo_para_JSON(string comodo) {
     return stringJSON;
 }
 
-int pegar_dados(const char * const monitor, int *mac_address, char *tipo, int *valor) {
+int pegar_dados(const char * const monitor, string *mac_address, char *tipo, int *valor) {
     cJSON *monitor_json = cJSON_Parse(monitor);
     if(monitor_json == NULL) {
         return -4;
@@ -42,12 +44,13 @@ int pegar_dados(const char * const monitor, int *mac_address, char *tipo, int *v
     const cJSON *id = NULL;
     id = cJSON_GetObjectItemCaseSensitive(monitor_json, "ID");
 
-    if(!cJSON_IsNumber(id)) {
+    if (!cJSON_IsString(id) or (id->valuestring == NULL)) {
         cJSON_Delete(monitor_json);
-        return -5;
+        return -6;
     }
 
-    *mac_address = id->valueint;
+    string temp(id->valuestring);
+    *mac_address = temp;
 
     const cJSON *name = NULL;
     name = cJSON_GetObjectItemCaseSensitive(monitor_json, "tipo");

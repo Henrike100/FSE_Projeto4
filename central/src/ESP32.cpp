@@ -1,11 +1,11 @@
 #include "ESP32.hpp"
 
 ESP32::ESP32() {}
-ESP32::ESP32(const string& c, const string& n, const int m) : comodo(c), nome(n), mac_adress(m) {}
+ESP32::ESP32(const string& c, const string& n, const string& m) : comodo(c), nome(n), mac_adress(m) {}
 
 string ESP32::getComodo() const { return comodo; }
 string ESP32::getNome() const { return nome; }
-int ESP32::getMacAdress() const { return mac_adress; }
+string ESP32::getMacAdress() const { return mac_adress; }
 
 string ESP32::getTemperatura() const {
     if(temperatura == -2)
