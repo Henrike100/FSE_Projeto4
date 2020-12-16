@@ -19,23 +19,24 @@ char* mensagem_inicializacao(const uint8_t mac_address) {
     return string;
 }
 
-char* pegar_comodo(const char * const monitor) {
+void pegar_comodo(const char * const monitor, char *comodo) {
     cJSON *monitor_json = cJSON_Parse(monitor);
     if (monitor_json == NULL) {
         cJSON_Delete(monitor_json);
-        return "";
+        return;
     }
 
     const cJSON *name = NULL;
     name = cJSON_GetObjectItemCaseSensitive(monitor_json, "Comodo");
 
     if (!cJSON_IsString(name) || (name->valuestring == NULL)) {
+        printf("Erro\n");
         cJSON_Delete(monitor_json);
-        return "";
+        return;
     }
 
+    strcpy(comodo, name->valuestring);
     cJSON_Delete(monitor_json);
-    return name->valuestring;
 }
 
 char* transformar_mensagem_para_JSON(const int identificador, uint8_t mac_address, const char* comodo, const int dado) {
@@ -47,7 +48,12 @@ char* transformar_mensagem_para_JSON(const int identificador, uint8_t mac_addres
         return "";
     }
 
-    if (cJSON_AddNumberToObject(monitor, identificador == IDENTIFICADOR_TEMPERATURA ? "T" : "U", dado) == NULL) {
+    if (cJSON_AddStringToObject(monitor, "tipo", IDENTIFICADOR_TEMPERATURA ? "temperatura" : "umidade") == NULL) {
+        cJSON_Delete(monitor);
+        return "";
+    }
+
+    if (cJSON_AddNumberToObject(monitor, "valor", dado) == NULL) {
         cJSON_Delete(monitor);
         return "";
     }
@@ -77,25 +83,29 @@ Inicializacao (receber):
 Temperatura:
 {
     "ID": mac_address,
-    "T": dado
+    "tipo": "temperatura",
+    "valor": dado
 }
 
 Umidade:
 {
     "ID": mac_address,
-    "U": dado
+    "tipo": "umidade",
+    "valor": dado
 }
 
 Entrada:
 {
     "ID": mac_address,
-    "E": dado
+    "tipo": "entrada",
+    "valor": dado
 }
 
 Saida:
 {
     "ID": mac_address,
-    "S": dado
+    "tipo": "saida",
+    "valor": dado
 }
 
 */

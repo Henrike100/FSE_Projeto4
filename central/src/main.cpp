@@ -35,6 +35,14 @@ int main() {
     wrefresh(solicitacoes);
     wrefresh(escolhas);
 
+    int erro;
+
+    if((erro = iniciar_MQTT()) != 0) {
+        endwin();
+        printf("Erro ao iniciar MQTT: %d\n", erro);
+        return 0;
+    }
+
     iniciar_menu(opcoes, "OPCOES");
     iniciar_menu(dispositivos, "DISPOSITIVOS");
     iniciar_menu(solicitacoes, "SOLICITACOES");
@@ -44,6 +52,8 @@ int main() {
     pegar_escolhas(escolhas);
 
     thread_menus.join();
+
+    desativar_MQTT();
 
     delwin(opcoes);
     delwin(dispositivos);

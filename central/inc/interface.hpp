@@ -7,12 +7,19 @@
 #include <unistd.h>
 #include <thread>
 #include <signal.h>
+#include <stdint.h>
+#include <iostream>
+#include <vector>
 #include "constantes.hpp"
 #include "ESP32.hpp"
+#include "MQTTClient.h"
+#include "utilidades.hpp"
 
 using namespace std;
 
 void signal_handler(int signum);
+int iniciar_MQTT();
+void desativar_MQTT();
 void iniciar_menu(WINDOW *menu, string titulo);
 void atualizar_menu_opcoes(WINDOW *menu);
 void atualizar_menu_dispositivos(WINDOW *menu);

@@ -26,7 +26,8 @@
 
 extern xSemaphoreHandle conexaoMQTTSemaphore;
 extern uint8_t mac_address;
-extern char comodo[20];
+char comodo[20];
+int comodo_definido = 0;
 
 esp_mqtt_client_handle_t client;
 
@@ -40,9 +41,10 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event) {
     switch (event->event_id) {
         case MQTT_EVENT_CONNECTED:
             //ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-            xSemaphoreGive(conexaoMQTTSemaphore);
-            msg_id = esp_mqtt_client_publish(client, topico_inicializacao, mensagem_inicializacao(mac_address), 0, 1, 0);
-            msg_id = esp_mqtt_client_subscribe(client, topico_inicializacao, 0);
+            if(!comodo_definido) {
+                msg_id = esp_mqtt_client_publish(client, topico_inicializacao, mensagem_inicializacao(mac_address), 0, 1, 0);
+                msg_id = esp_mqtt_client_subscribe(client, topico_inicializacao, 0);
+            }
             break;
         case MQTT_EVENT_DISCONNECTED:
             //ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
@@ -58,12 +60,15 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event) {
             break;
         case MQTT_EVENT_DATA:
             //ESP_LOGI(TAG, "MQTT_EVENT_DATA");
-            printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
-            printf("DATA=%.*s\r\n", event->data_len, event->data);
+            //printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
+            //printf("DATA=%.*s\r\n", event->data_len, event->data);
 
             // Se o servidor central mandou o comodo do dispositivo
-            if(strcmp(event->topic, topico_inicializacao) == 0) {
-                strcpy(comodo, pegar_comodo(event->data));
+            if(!comodo_definido) {
+                pegar_comodo(event->data, comodo);
+                printf("Comodo: %s\n", comodo);
+
+                comodo_definido = 1;
 
                 // Agora o dispositivo pode publicar
                 xSemaphoreGive(conexaoMQTTSemaphore);
