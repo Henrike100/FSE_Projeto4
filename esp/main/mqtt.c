@@ -26,6 +26,7 @@
 
 extern xSemaphoreHandle conexaoMQTTSemaphore;
 extern uint8_t mac_address;
+char topico_inicializacao[50];
 char comodo[20];
 int comodo_definido = 0;
 
@@ -34,9 +35,6 @@ esp_mqtt_client_handle_t client;
 static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event) {
     esp_mqtt_client_handle_t client = event->client;
     int msg_id;
-
-    char topico_inicializacao[50];
-    sprintf(topico_inicializacao, "fse2020/%s/dispositivos/%d", MATRICULA, mac_address);
 
     switch (event->event_id) {
         case MQTT_EVENT_CONNECTED:
@@ -60,14 +58,10 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event) {
             break;
         case MQTT_EVENT_DATA:
             //ESP_LOGI(TAG, "MQTT_EVENT_DATA");
-            //printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
-            //printf("DATA=%.*s\r\n", event->data_len, event->data);
 
             // Se o servidor central mandou o comodo do dispositivo
             if(!comodo_definido) {
                 pegar_comodo(event->data, comodo);
-                printf("Comodo: %s\n", comodo);
-
                 comodo_definido = 1;
 
                 // Agora o dispositivo pode publicar
@@ -77,6 +71,9 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event) {
             else {
                 // pegar comando de ligar/desligar
                 
+                // mudar LED
+
+                // mandar resposta
             }
             break;
         case MQTT_EVENT_ERROR:
@@ -98,6 +95,7 @@ void mqtt_start() {
     esp_mqtt_client_config_t mqtt_config = {
         .uri = "mqtt://mqtt.eclipseprojects.io",
     };
+    sprintf(topico_inicializacao, "fse2020/%s/dispositivos/%d", MATRICULA, mac_address);
     client = esp_mqtt_client_init(&mqtt_config);
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
     esp_mqtt_client_start(client);

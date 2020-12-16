@@ -28,7 +28,6 @@ void conectadoWifi(void * params) {
 }
 
 void trataComunicacaoComServidor(void * params) {
-    printf("Esperando receber comodo...\n");
     if(xSemaphoreTake(conexaoMQTTSemaphore, portMAX_DELAY)) {
         sprintf(topicoTemperatura, "fse2020/%s/%s/temperatura", MATRICULA, comodo);
         sprintf(topicoUmidade, "fse2020/%s/%s/umidade", MATRICULA, comodo);
@@ -41,16 +40,12 @@ void trataComunicacaoComServidor(void * params) {
                 topicoTemperatura,
                 transformar_mensagem_para_JSON(IDENTIFICADOR_TEMPERATURA, mac_address, comodo, dado.temperature)
             );
-            printf("Enviei Temperatura para: %s\n", topicoTemperatura);
-            printf("%s\n", transformar_mensagem_para_JSON(IDENTIFICADOR_TEMPERATURA, mac_address, comodo, dado.temperature));
 
             // Envia Umidade
             mqtt_envia_mensagem(
                 topicoUmidade,
                 transformar_mensagem_para_JSON(IDENTIFICADOR_UMIDADE, mac_address, comodo, dado.humidity)
             );
-            printf("Enviei Umidade para: %s\n", topicoUmidade);
-            printf("%s\n", transformar_mensagem_para_JSON(IDENTIFICADOR_UMIDADE, mac_address, comodo, dado.humidity));
 
             vTaskDelay(TEMPO_ENVIO_MQTT * 1000 / portTICK_PERIOD_MS);
         }

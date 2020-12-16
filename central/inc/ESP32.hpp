@@ -14,8 +14,8 @@ private:
     int mac_adress;
     int temperatura = VALOR_INICIAL;
     int umidade = VALOR_INICIAL;
-    int entrada = VALOR_INICIAL;
-    int saida = VALOR_INICIAL;
+    int entrada = 0;
+    int saida = 0;
 
 public:
     ESP32();

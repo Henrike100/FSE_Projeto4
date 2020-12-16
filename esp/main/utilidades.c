@@ -48,7 +48,7 @@ char* transformar_mensagem_para_JSON(const int identificador, uint8_t mac_addres
         return "";
     }
 
-    if (cJSON_AddStringToObject(monitor, "tipo", IDENTIFICADOR_TEMPERATURA ? "temperatura" : "umidade") == NULL) {
+    if (cJSON_AddStringToObject(monitor, "tipo", identificador == IDENTIFICADOR_TEMPERATURA ? "temperatura" : "umidade") == NULL) {
         cJSON_Delete(monitor);
         return "";
     }
@@ -78,6 +78,11 @@ Inicializacao (enviar):
 Inicializacao (receber):
 {
     "Comodo": comodo
+}
+
+Comando de mudar LED:
+{
+    "LED": proximo_estado
 }
 
 Temperatura:

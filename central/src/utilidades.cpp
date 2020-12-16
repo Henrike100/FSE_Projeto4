@@ -51,7 +51,7 @@ int pegar_dados(const char * const monitor, int *mac_address, char *tipo, int *v
 
     const cJSON *name = NULL;
     name = cJSON_GetObjectItemCaseSensitive(monitor_json, "tipo");
-    if (cJSON_IsString(name) && (name->valuestring != NULL)) {
+    if (!cJSON_IsString(name) or (name->valuestring == NULL)) {
         cJSON_Delete(monitor_json);
         return -6;
     }
@@ -70,4 +70,19 @@ int pegar_dados(const char * const monitor, int *mac_address, char *tipo, int *v
 
     cJSON_Delete(monitor_json);
     return 0;
+}
+
+char* transformar_comando_mudar_LED_para_JSON(const int proximo_estado) {
+    cJSON *monitor = cJSON_CreateObject();
+    char *stringJSON = NULL;
+
+    if (cJSON_AddNumberToObject(monitor, "LED", proximo_estado) == NULL) {
+        cJSON_Delete(monitor);
+        return stringJSON;
+    }
+
+    stringJSON = cJSON_Print(monitor);
+
+    cJSON_Delete(monitor);
+    return stringJSON;
 }

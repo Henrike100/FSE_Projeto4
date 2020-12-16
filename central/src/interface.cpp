@@ -56,7 +56,7 @@ int msgarrvd_comodo(void *context, char *topicName, int topicLen, MQTTClient_mes
         return 1;
     }
 
-    int i;
+    int i = 0;
     for(i = 0; i < quantidade_dispositivos_cadastrados; ++i) {
         if(dispositivos_cadastrados[i].getMacAdress() == mac_address)
             break;
@@ -235,22 +235,29 @@ void atualizar_menu_dispositivos(WINDOW *menu) {
         if(!(index&1))
             start += (line_size/2);
 
-	    ESP32 esp = dispositivos_cadastrados[i-1];
+        ESP32 esp = dispositivos_cadastrados[i-1];
 
         string name = esp.getNome();
-        string entrada = esp.getEntrada() == 0 ? "Desligado" : "Ligado";
-	    string saida = esp.getSaida() == 0 ? "Desligado" : "Ligado";
-	    string temperatura = esp.getTemperatura();
-	    string umidade = esp.getUmidade();
+        string entrada = esp.getEntrada() < 0 ? " " : esp.getEntrada() == 0 ? "Desligado" : "Ligado";
+	    string saida = esp.getSaida() < 0 ? " " : esp.getSaida() == 0 ? "Desligado" : "Ligado";
+	    string temperatura = esp.getTemperatura() + " °C";
+	    string umidade = esp.getUmidade() + " %";
 
         const string spaces(((line_size/2)-name.size())/2 - 3, ' ');
 
         mvwprintw(menu, linha_atual, start+1, "%02d%s%s%s", index, spaces.c_str(), name.c_str(), spaces.c_str());
         mvwhline(menu, linha_atual+1, start, 0, line_size/2);
 
+        mvwprintw(menu, linha_atual+2, start+1, "%s", entrada.c_str());
+
         mvwvline(menu, linha_atual+2, start-1+(line_size)/8, 0, 1);
+        mvwprintw(menu, linha_atual+2, start+(line_size)/8, "%s", saida.c_str());
+
         mvwvline(menu, linha_atual+2, start-1+(line_size)/4, 0, 1);
+        mvwprintw(menu, linha_atual+2, start+(line_size)/4, "%s", temperatura.c_str());
+
         mvwvline(menu, linha_atual+2, start-2+(3*line_size)/8, 0, 1);
+        mvwprintw(menu, linha_atual+2, start-1+(3*line_size)/8, "%s", umidade.c_str());
 
         mvwhline(menu, linha_atual+3, start, 0, line_size/2);
 
@@ -319,6 +326,25 @@ void reiniciar_menu_ecolhas(WINDOW *menu, const int num_lines) {
     mtx_interface.unlock();
 }
 
+void mudar_LED(int idx) {
+    ESP32 esp = dispositivos_cadastrados[idx];
+    char topico[100];
+    sprintf(topico, "fse2020/%s/dispositivos/%d", MATRICULA, esp.getMacAdress());
+
+    MQTTClient_message pubmsg = MQTTClient_message_initializer;
+    MQTTClient_deliveryToken token;
+
+    char mensagem[100];
+    strcpy(mensagem, transformar_comando_mudar_LED_para_JSON(1-esp.getSaida()));
+
+    pubmsg.payload = mensagem;
+    pubmsg.payloadlen = strlen(mensagem);
+    pubmsg.qos = 1;
+    pubmsg.retained = 0;
+
+    MQTTClient_publishMessage(client_ESP, topico, &pubmsg, &token);
+}
+
 void mudar_estado_dispositivo(WINDOW *menu, const int num_lines) {
     limpar_menu(menu, num_lines);
 
@@ -342,7 +368,12 @@ void mudar_estado_dispositivo(WINDOW *menu, const int num_lines) {
         invalid = opcao < 1 || opcao > total_dispositivos;
     } while(invalid);
 
-    // mudar estado
+    if(opcao <= quantidade_dispositivos_padrao) {
+        // dispositivo padrao
+    }
+    else {
+        mudar_LED(opcao-1-quantidade_dispositivos_padrao);
+    }
 }
 
 void salvar_dispositivos_cadastrados() {
@@ -364,7 +395,7 @@ void salvar_dispositivos_cadastrados() {
 
 void enviar_comodo_para_ESP(const string comodo, const int mac_adress) {
     char topico[100];
-    sprintf(topico, "fse2020/170050394/dispositivos/%d", mac_adress);
+    sprintf(topico, "fse2020/%s/dispositivos/%d", MATRICULA, mac_adress);
 
     MQTTClient_message pubmsg = MQTTClient_message_initializer;
     MQTTClient_deliveryToken token;
@@ -402,7 +433,7 @@ void inscrever_no_comodo(const string comodo) {
     conn_opts.keepAliveInterval = 20;
     conn_opts.cleansession = 1;
 
-    MQTTClient_setCallbacks(client_comodos[quantidade_comodos], NULL, connlost_comodo, msgarrvd_comodo, delivered_comodo);
+    MQTTClient_setCallbacks(client_comodos[quantidade_comodos], NULL, connlost, msgarrvd_comodo, delivered);
 
     int rc;
 
