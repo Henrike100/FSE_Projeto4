@@ -752,6 +752,8 @@ void thread_atualizar_menus(WINDOW *opcoes, WINDOW *dispositivos, WINDOW *solici
         atualizar_menu_solicitacoes(solicitacoes);
         sleep(1);
     }
+
+    close(id.fd);
 }
 
 void thread_alarme() {
