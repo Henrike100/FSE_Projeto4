@@ -21,6 +21,9 @@ MQTTClient client_comodos[5];
 float temperatura = -1.0f;
 float umidade = -1.0f;
 
+struct bme280_dev dev;
+struct identifier id;
+
 int valores[] = {
     0, // Alarme
     0, // Lampada Cozinha
@@ -710,8 +713,40 @@ void pegar_escolhas(WINDOW *menu) {
     } while(programa_pode_continuar);
 }
 
+void leitura_sensores_bme280() {
+    struct bme280_data comp_data;
+
+    if (bme280_set_sensor_mode(BME280_FORCED_MODE, &dev) == BME280_OK) {
+        if (bme280_get_sensor_data(BME280_ALL, &comp_data, &dev) == BME280_OK) {
+            float temp_lida = comp_data.temperature;
+            float umid_lida = comp_data.humidity;
+            if(0 <= temp_lida && temp_lida <= 50) {
+                temperatura = temp_lida;
+            }
+            if(0 <= umid_lida && umid_lida <= 100) {
+                umidade = umid_lida;
+            }
+        }
+    }
+}
+
+void leitura_sensores_gpio() {
+    valores[3] = (bcm2835_gpio_lev(GPIO_SENSOR_SALA) ? 1 : 0);
+    valores[4] = (bcm2835_gpio_lev(GPIO_SENSOR_COZINHA) ? 1 : 0);
+    valores[5] = (bcm2835_gpio_lev(GPIO_SENSOR_PORTA_COZINHA) ? 1 : 0);
+    valores[6] = (bcm2835_gpio_lev(GPIO_SENSOR_JANELA_COZINHA) ? 1 : 0);
+    valores[7] = (bcm2835_gpio_lev(GPIO_SENSOR_PORTA_SALA) ? 1 : 0);
+    valores[8] = (bcm2835_gpio_lev(GPIO_SENSOR_JANELA_SALA) ? 1 : 0);
+}
+
+void atualiza_sensores() {
+    leitura_sensores_bme280();
+    leitura_sensores_gpio();
+}
+
 void thread_atualizar_menus(WINDOW *opcoes, WINDOW *dispositivos, WINDOW *solicitacoes) {
     while(programa_pode_continuar) {
+        atualiza_sensores();
         atualizar_menu_opcoes(opcoes);
         atualizar_menu_dispositivos(dispositivos);
         atualizar_menu_solicitacoes(solicitacoes);

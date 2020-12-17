@@ -14,6 +14,7 @@
 #include "ESP32.hpp"
 #include "MQTTClient.h"
 #include "utilidades.hpp"
+#include "gpio.hpp"
 
 using namespace std;
 
