@@ -1,7 +1,7 @@
 #ifndef GPIO_HPP
 #define GPIO_HPP
 
-//#include <bcm2835.h>
+#include <bcm2835.h>
 
 #define GPIO_LAMPADA_COZINHA               RPI_V2_GPIO_P1_11
 #define GPIO_LAMPADA_SALA                  RPI_V2_GPIO_P1_12

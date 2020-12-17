@@ -15,6 +15,7 @@
 #include "MQTTClient.h"
 #include "utilidades.hpp"
 #include "gpio.hpp"
+#include "configuracoes.hpp"
 
 using namespace std;
 

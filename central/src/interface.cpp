@@ -104,6 +104,10 @@ int msgarrvd_comodo(void *context, char *topicName, int topicLen, MQTTClient_mes
         FILE *lista;
         lista = fopen("esps.txt", "r");
 
+        if(lista == NULL) {
+            return 1;
+        }
+
         int quantidade;
         fscanf(lista, " %d", &quantidade);
 
@@ -189,6 +193,10 @@ void inscrever_no_comodo(const string comodo) {
 void pegar_comodos_ja_cadastrados() {
     FILE *lista_comodos_file;
     lista_comodos_file = fopen("comodos.txt", "r");
+
+    if(lista_comodos_file == NULL) {
+        return;
+    }
 
     char comodos[20];
 
@@ -556,6 +564,20 @@ void mudar_LED(int idx) {
     MQTTClient_publishMessage(client_ESP, topico, &pubmsg, &token);
 }
 
+void mudar_saida(int opcao) {
+    if(opcao == 1) {
+        valores[0] = 1 - valores[0];
+    }
+    else if(opcao == 2) {
+        valores[1] = 1 - valores[1];
+        bcm2835_gpio_write(GPIO_LAMPADA_COZINHA, valores[1]);
+    }
+    else {
+        valores[2] = 1 - valores[2];
+        bcm2835_gpio_write(GPIO_LAMPADA_SALA, valores[2]);
+    }
+}
+
 void mudar_estado_dispositivo(WINDOW *menu, const int num_lines) {
     limpar_menu(menu, num_lines);
 
@@ -581,7 +603,7 @@ void mudar_estado_dispositivo(WINDOW *menu, const int num_lines) {
 
     if(opcao <= quantidade_dispositivos_padrao) {
         if(opcao <= 3) {
-            // dispositivo padrao
+            mudar_saida(opcao);
             atualizar_csv(1, opcao, 1-valores[opcao-1]);
         }
     }
@@ -745,6 +767,18 @@ void atualiza_sensores() {
 }
 
 void thread_atualizar_menus(WINDOW *opcoes, WINDOW *dispositivos, WINDOW *solicitacoes) {
+    int erro = configurar_gpio();
+    if(erro) {
+        programa_pode_continuar = false;
+        return;
+    }
+
+    erro = configurar_sensores(&dev, &id);
+    if(erro) {
+        programa_pode_continuar = false;
+        return;
+    }
+    
     while(programa_pode_continuar) {
         atualiza_sensores();
         atualizar_menu_opcoes(opcoes);
