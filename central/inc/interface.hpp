@@ -29,4 +29,10 @@ void atualizar_menu_solicitacoes(WINDOW *menu);
 void pegar_escolhas(WINDOW *menu);
 void thread_atualizar_menus(WINDOW *opcoes, WINDOW *dispositivos, WINDOW *solicitacoes);
 
+void thread_alarme();
+
+int abrir_csv();
+void atualizar_csv(const int opcao, const int index, const int ligou);
+void fechar_csv();
+
 #endif // INTERFACE_HPP

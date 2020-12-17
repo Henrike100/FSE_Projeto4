@@ -18,6 +18,33 @@ vector<string> lista_comodos;
 MQTTClient client_ESP;
 MQTTClient client_comodos[5];
 
+float temperatura = -1.0f;
+float umidade = -1.0f;
+
+int valores[] = {
+    0, // Alarme
+    0, // Lampada Cozinha
+    0, // Lampada Sala
+    0, // Sensor Sala
+    0, // Sensor Cozinha
+    0, // Sensor Porta Cozinha
+    0, // Sensor Janela Cozinha
+    0, // Sensor Porta Sala
+    0, // Sensor Janela Sala
+};
+
+int modos[] = {
+    SAIDA, // Alarme
+    SAIDA, // Lampada Cozinha
+    SAIDA, // Lampada Sala
+    ENTRADA, // Sensor Sala
+    ENTRADA, // Sensor Cozinha
+    ENTRADA, // Sensor Porta Cozinha
+    ENTRADA, // Sensor Janela Cozinha
+    ENTRADA, // Sensor Porta Sala
+    ENTRADA, // Sensor Janela Sala
+};
+
 void signal_handler(int signum) {
     programa_pode_continuar = false;
 }
@@ -116,19 +143,6 @@ int msgarrvd_comodo(void *context, char *topicName, int topicLen, MQTTClient_mes
     return 1;
 }
 
-void salvar_lista_comodos() {
-    FILE *lista_comodos_file;
-    lista_comodos_file = fopen("comodos.txt", "w+");
-
-    fprintf(lista_comodos_file, "%d\n", lista_comodos.size());
-
-    for(int i = 0; i < lista_comodos.size(); ++i) {
-        fprintf(lista_comodos_file, "%s\n", lista_comodos[i].c_str());
-    }
-
-    fclose(lista_comodos_file);
-}
-
 void inscrever_no_comodo(const string comodo) {
     int quantidade_comodos = lista_comodos.size();
     for(int i = 0; i < quantidade_comodos; ++i) {
@@ -166,7 +180,7 @@ void inscrever_no_comodo(const string comodo) {
     MQTTClient_subscribe(client_comodos[quantidade_comodos], topico_comodo, 1);
 
     lista_comodos.push_back(comodo);
-    salvar_lista_comodos();
+    salvar_lista_comodos(lista_comodos);
 }
 
 void pegar_comodos_ja_cadastrados() {
@@ -325,7 +339,12 @@ void atualizar_menu_opcoes(WINDOW *menu) {
         wmove(menu, linha_atual, 1);
         wclrtoeol(menu);
 
-        mvwprintw(menu, linha_atual, 2, "%02d   Ligar", index);
+        if(modos[index-1] == ENTRADA) {
+            mvwprintw(menu, linha_atual, 2, "%02d   --------", index);
+        }
+        else {
+            mvwprintw(menu, linha_atual, 2, "%02d   %s", index, valores[index-1] == 0 ? "Ligar" : "Desligar");
+        }
     }
 
     for(int i = 0; i < quantidade_dispositivos_cadastrados; ++i, linha_atual += 2) {
@@ -374,9 +393,39 @@ void atualizar_menu_dispositivos(WINDOW *menu) {
         mvwprintw(menu, linha_atual, start+1, "%02d%s%s%s", index, spaces.c_str(), dispositivos_padrao[index-1], spaces.c_str());
         mvwhline(menu, linha_atual+1, start, 0, line_size/2);
 
+        if(modos[index-1] == ENTRADA) {
+            mvwprintw(menu, linha_atual+2, start, "%s", valores[index-1] == 0 ? "Desligado" : "Ligado");
+        }
+        else {
+            mvwprintw(menu, linha_atual+2, start, "---");
+        }
+
         mvwvline(menu, linha_atual+2, start-1+(line_size)/8, 0, 1);
+
+        if(modos[index-1] == SAIDA) {
+            mvwprintw(menu, linha_atual+2, start+(line_size)/8, "%s", valores[index-1] == 0 ? "Desligado" : "Ligado");
+        }
+        else {
+            mvwprintw(menu, linha_atual+2, start+(line_size)/8, "---");
+        }
+
         mvwvline(menu, linha_atual+2, start-1+(line_size)/4, 0, 1);
+
+        if(temperatura > 0) {
+            mvwprintw(menu, linha_atual+2, start+(line_size)/4, "%.1f °C", temperatura);
+        }
+        else {
+            mvwprintw(menu, linha_atual+2, start+(line_size)/4, " ");
+        }
+
         mvwvline(menu, linha_atual+2, start-2+(3*line_size)/8, 0, 1);
+
+        if(umidade > 0) {
+            mvwprintw(menu, linha_atual+2, start-1+(3*line_size)/8, "%.1f ", umidade);
+        }
+        else {
+            mvwprintw(menu, linha_atual+2, start-1+(3*line_size)/8, " ");
+        }
 
         mvwhline(menu, linha_atual+3, start, 0, line_size/2);
 
@@ -528,10 +577,15 @@ void mudar_estado_dispositivo(WINDOW *menu, const int num_lines) {
     } while(invalid);
 
     if(opcao <= quantidade_dispositivos_padrao) {
-        // dispositivo padrao
+        if(opcao <= 3) {
+            // dispositivo padrao
+            atualizar_csv(1, opcao, 1-valores[opcao-1]);
+        }
     }
     else {
-        mudar_LED(opcao-1-quantidade_dispositivos_padrao);
+        int idx = opcao-1-quantidade_dispositivos_padrao;
+        mudar_LED(idx);
+        atualizar_csv(1, opcao, 1-dispositivos_cadastrados[idx].getSaida());
     }
 }
 
@@ -607,6 +661,7 @@ void escolher_dispositivo(WINDOW *menu, const int num_lines) {
         string nome = pegar_nome_dispositivo(menu, num_lines);
         
         adicionar_novo_dispositivo(opcao, comodo, nome, dispositivos_esperando[opcao-1]);
+        atualizar_csv(2, quantidade_dispositivos_cadastrados-1, -1);
     }
 }
 
@@ -652,7 +707,6 @@ void pegar_escolhas(WINDOW *menu) {
             programa_pode_continuar = false;
             break;
         }
-
     } while(programa_pode_continuar);
 }
 
@@ -661,6 +715,65 @@ void thread_atualizar_menus(WINDOW *opcoes, WINDOW *dispositivos, WINDOW *solici
         atualizar_menu_opcoes(opcoes);
         atualizar_menu_dispositivos(dispositivos);
         atualizar_menu_solicitacoes(solicitacoes);
+        sleep(1);
+    }
+}
+
+void thread_alarme() {
+    while(programa_pode_continuar) {
+        if(valores[0]) {
+            bool tocar = (
+                valores[3] or
+                valores[4] or
+                valores[5] or
+                valores[6] or
+                valores[7] or
+                valores[8]
+            );
+
+            for(int i = 0; i < quantidade_dispositivos_cadastrados; ++i) {
+                tocar = tocar or (dispositivos_cadastrados[i].getEntrada() == 1);
+            }
+
+            if(tocar) {
+                // esta função causa erros com o ncurses
+                system("omxplayer alarme.mp3 > /dev/null");
+                time_t now = time(0);
+                tm *ltm = localtime(&now);
+
+                for(int i = 3; i < 9; ++i) {
+                    if(valores[i]) {
+                        mtx_csv.lock();
+                        fprintf(file, "%02d/%02d/%d %02d:%02d:%02d, Alarme, %s\n",
+                            ltm->tm_mday,
+                            ltm->tm_mon+1,
+                            ltm->tm_year+1900,
+                            ltm->tm_hour,
+                            ltm->tm_min,
+                            ltm->tm_sec,
+                            dispositivos_padrao[i]
+                        );
+                        mtx_csv.unlock();
+                    }
+                }
+
+                for(int i = 0; i < quantidade_dispositivos_cadastrados; ++i) {
+                    if(dispositivos_cadastrados[i].getEntrada()) {
+                        mtx_csv.lock();
+                        fprintf(file, "%02d/%02d/%d %02d:%02d:%02d, Alarme, %s\n",
+                            ltm->tm_mday,
+                            ltm->tm_mon+1,
+                            ltm->tm_year+1900,
+                            ltm->tm_hour,
+                            ltm->tm_min,
+                            ltm->tm_sec,
+                            dispositivos_cadastrados[i].getNome().c_str()
+                        );
+                        mtx_csv.unlock();
+                    }
+                }
+            }
+        }
         sleep(1);
     }
 }
@@ -687,7 +800,15 @@ void atualizar_csv(const int opcao, const int index, const int ligou) {
     }
     else if(opcao == 2) {
         mtx_csv.lock();
-        // salvar
+        fprintf(file, "%02d/%02d/%d %02d:%02d:%02d, Usuário, Adicionou %s\n",
+            ltm->tm_mday,
+            ltm->tm_mon+1,
+            ltm->tm_year+1900,
+            ltm->tm_hour,
+            ltm->tm_min,
+            ltm->tm_sec,
+            dispositivos_cadastrados[index].getNome().c_str()
+        );
         mtx_csv.unlock();
     }
 }

@@ -89,3 +89,16 @@ char* transformar_comando_mudar_LED_para_JSON(const int proximo_estado) {
     cJSON_Delete(monitor);
     return stringJSON;
 }
+
+void salvar_lista_comodos(const vector<string>& lista_comodos) {
+    FILE *lista_comodos_file;
+    lista_comodos_file = fopen("comodos.txt", "w+");
+
+    fprintf(lista_comodos_file, "%d\n", lista_comodos.size());
+
+    for(int i = 0; i < lista_comodos.size(); ++i) {
+        fprintf(lista_comodos_file, "%s\n", lista_comodos[i].c_str());
+    }
+
+    fclose(lista_comodos_file);
+}

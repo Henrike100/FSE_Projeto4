@@ -37,6 +37,14 @@ int main() {
 
     int erro;
 
+    erro = abrir_csv();
+
+    if(erro) {
+        endwin();
+        printf("Erro ao abrir CSV: %d\n", erro);
+        return 0;
+    }
+
     if((erro = iniciar_MQTT()) != 0) {
         endwin();
         printf("Erro ao iniciar MQTT: %d\n", erro);
@@ -51,11 +59,14 @@ int main() {
     pegar_comodos_ja_cadastrados();
 
     thread thread_menus(thread_atualizar_menus, opcoes, dispositivos, solicitacoes);
+    thread thread_sensores(thread_alarme);
     pegar_escolhas(escolhas);
 
     thread_menus.join();
+    thread_sensores.join();
 
     desativar_MQTT();
+    fechar_csv();
 
     delwin(opcoes);
     delwin(dispositivos);

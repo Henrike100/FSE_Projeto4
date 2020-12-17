@@ -9,6 +9,9 @@
 #define TOPIC       "fse2020/170050394/dispositivos/#"
 #define MATRICULA   "170050394"
 
+#define ENTRADA     0
+#define SAIDA       1
+
 extern const char *const dispositivos_padrao[];
 
 #endif // CONSTANTES_HPP
